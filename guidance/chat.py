@@ -79,7 +79,7 @@ def load_template_class(chat_template=None):
     if chat_template is not None:
         warnings.warn(
             f"""Chat template {chat_template} was unable to be loaded directly into guidance.
-                        Defaulting to the ChatML format which may not be optimal for the selected model. 
+                        Defaulting to the ChatML format which may not be optimal for the selected model.
                         For best results, create and pass in a `guidance.ChatTemplate` subclass for your model."""
         )
 
@@ -299,3 +299,71 @@ class Gemma29BInstructChatTemplate(ChatTemplate):
 
 
 CHAT_TEMPLATE_CACHE[gemma2_9b_it_template] = Gemma29BInstructChatTemplate
+
+from typing import Dict, Mapping, Sequence, Union
+
+try:
+    import transformers as transformers_package
+
+    has_transformers = True
+except ModuleNotFoundError:
+    has_transformers = False
+
+
+class GeneralChatTemplate(ChatTemplate):
+    def __init__(self, role_dict: Mapping[str, Sequence[str]]):
+        for v in role_dict.values():
+            if len(v) != 2:
+                raise ValueError("All role_dict lists must be of length 2")
+        self._role_dict = role_dict
+
+    def get_role_start(self, role_name: str):
+        return self._role_dict[role_name][0]
+
+    def get_role_end(self, role_name: str):
+        return self._role_dict[role_name][1]
+
+
+def auto_chat_template(
+    transformers_tokenizer: Union[
+        "transformers_package.PreTrainedTokenizer",
+        "transformers_package.PreTrainedTokenizerFast",
+    ]
+) -> GeneralChatTemplate:
+    """Attempts to extract a ChatTemplate from a Transformer Tokenizer.
+    This is a very crude initial implementation. At the very least, it
+    should probably be extended to cope with models which don't support
+    the 'system' role.
+    This said, it is also likely impractical to make it support any
+    weird model (since they are using Jinja2 internally, and that's
+    a full programming language).
+    """
+    messages = [
+        {"role": "system", "content": "AAAA"},
+        {"role": "user", "content": "BBBB"},
+        {"role": "assistant", "content": "CCCC"},
+    ]
+
+    # Progressively render the conversation
+    system: str = transformers_tokenizer.apply_chat_template(messages[:1], tokenize=False)  # type: ignore
+    user: str = transformers_tokenizer.apply_chat_template(messages[:2], tokenize=False)  # type: ignore
+    assistant: str = transformers_tokenizer.apply_chat_template(messages[:3], tokenize=False)  # type: ignore
+
+    # Split up the 'system' part
+    system_parts = system.split("AAAA")
+
+    # Extract just the 'user' part and split it up
+    user_substr = user[len(system) :]
+    user_parts = user_substr.split("BBBB")
+
+    # And the 'assistant part
+    assistant_substr = assistant[len(user) :]
+    assistant_parts = assistant_substr.split("CCCC")
+
+    # Build the dictionary of starts and stops
+    role_dict = dict(system=system_parts, user=user_parts, assistant=assistant_parts)
+
+    # Construct the final template
+    result = GeneralChatTemplate(role_dict)
+
+    return result

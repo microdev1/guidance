@@ -67,8 +67,8 @@ class Engine:
         self.metrics = GuidanceEngineMetrics()
 
     def get_chat_template(self): # TODO [HN]: Add more logic here...should we instantiate class here? do we even need to?
-        return self.tokenizer.chat_template() # Instantiate the class before returning to client for now
-    
+        return self.tokenizer.chat_template # Instantiate the class before returning to client for now
+
     def reset_metrics(self):
         self.metrics = GuidanceEngineMetrics()
 
@@ -313,7 +313,7 @@ class Model:
 
         elif self._event_parent is not None:
             # otherwise if the current event que has an event parent then that is also our parent
-            new_lm._event_parent = self._event_parent  
+            new_lm._event_parent = self._event_parent
 
         return new_lm
 
@@ -737,7 +737,7 @@ class Model:
                                     lm._variables[k] = []
                                 if k not in lm._variables_log_probs or not isinstance(lm._variables_log_probs[k], list):
                                     lm._variables_log_probs[k] = []
-                                    
+
                                 lm._variables[k].append(inner_v)
                                 lm._variables_log_probs[k].append(
                                     chunk.capture_group_log_probs[k][i]
