@@ -1,6 +1,6 @@
 import guidance
 
-from guidance import assistant, gen, models, user, chat, system, select
+from guidance import chat, models
 from transformers import AutoTokenizer
 
 llm = models.Ollama(
